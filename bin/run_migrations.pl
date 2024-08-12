@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use DBI;
 use File::Slurp;
+use Carp;
 
 # ========================================================
 # Database Connection
@@ -15,10 +16,11 @@ use File::Slurp;
 # The database connection handle ($dbh) is used to execute SQL
 # commands later in the script.
 # ========================================================
-my $dbh = DBI->connect("dbi:SQLite:dbname=db/orders.db", "", "", {
+my $db_path = "db/orders.db";  # Path to the SQLite database
+my $dbh = DBI->connect("dbi:SQLite:dbname=$db_path", "", "", {
     RaiseError => 1,
     AutoCommit => 1,
-});
+}) or croak("Failed to connect to the database: $DBI::errstr");
 
 # ========================================================
 # Read SQL Script
@@ -27,7 +29,9 @@ my $dbh = DBI->connect("dbi:SQLite:dbname=db/orders.db", "", "", {
 # SQL commands to create necessary tables and set up the 
 # database schema.
 # ========================================================
-my $sql = read_file('db/migrations/001_create_tables.sql');
+my $sql_file = 'db/migrations/001_create_tables.sql';
+my $sql = eval { read_file($sql_file) };
+croak("Failed to read SQL file '$sql_file': $@") if $@;
 
 # ========================================================
 # SQL Command Execution
@@ -49,10 +53,13 @@ my @commands = split(/;/, $sql);
 foreach my $command (@commands) {
     next unless $command =~ /\S/; # Skip empty commands
     $command .= ';';  # Re-add the semicolon for execution
-    my $result = $dbh->do($command);
-    
-    # Die with an error message if the command fails
-    die "Failed to execute SQL command: $command\nCheck the syntax or database constraints." unless $result;
+    eval {
+        my $result = $dbh->do($command);
+        die "Failed to execute SQL command: $command\n" unless $result;
+    };
+    if ($@) {
+        croak("An error occurred during migration: $@");
+    }
 }
 
 # ========================================================

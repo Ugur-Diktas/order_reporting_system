@@ -30,6 +30,30 @@
         .upload-area input[type="file"] {
             display: none;
         }
+        #orders-list {
+            margin: 20px auto;
+            width: 100%;
+            max-width: 600px;
+        }
+        #orders-list table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #orders-list th, #orders-list td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        #orders-list th {
+            background-color: #f4f4f4;
+        }
+        #orders-list td a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        #orders-list td a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -39,7 +63,7 @@
     <nav>
         <a href="#">Home</a>
         <a href="#upload-csv">Upload CSV</a>
-        <a href="#view-reports">View Reports</a>
+        <a href="#view-orders">View Orders</a>
     </nav>
 
     <!-- CSV Upload Section with Drag and Drop -->
@@ -54,10 +78,23 @@
         </div>
     </section>
 
-    <!-- View Reports Section -->
-    <section id="view-reports">
-        <h2>View Reports</h2>
-        <p>Coming soon...</p>
+    <!-- Orders List Section -->
+    <section id="view-orders">
+        <h2>Orders</h2>
+        <div id="orders-list">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order Number</th>
+                        <th>Order Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="orders-table-body">
+                    <!-- Orders will be populated here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
     </section>
 
     <script>
@@ -96,6 +133,28 @@
         fileInput.addEventListener('change', () => {
             document.getElementById('upload-form').submit();
         });
+
+        // Fetch and display orders
+        function fetchOrders() {
+            fetch('/api/list_orders')
+                .then(response => response.json())
+                .then(orders => {
+                    const tbody = document.getElementById('orders-table-body');
+                    tbody.innerHTML = ''; // Clear existing rows
+                    orders.forEach(order => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${order.order_number}</td>
+                            <td>${order.order_date}</td>
+                            <td><a href="/api/generate_pdf?order_id=${order.order_id}" target="_blank">Download PDF</a></td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                });
+        }
+
+        // Fetch orders on page load
+        window.onload = fetchOrders;
     </script>
 </body>
 </html>

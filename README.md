@@ -1,4 +1,4 @@
-cpan HTTP::Server::Simple::CGI
+perl .\bin\app.pl daemon
 
 Model, View, Controller + structure
 
