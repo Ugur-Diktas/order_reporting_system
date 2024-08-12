@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Reporting System</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Add styles for the drag and drop area */
+        .upload-area {
+            border: 2px dashed #007bff;
+            border-radius: 5px;
+            width: 100%;
+            max-width: 600px;
+            padding: 30px;
+            margin: 20px auto;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            color: #007bff;
+            background-color: #f9f9f9;
+        }
+        .upload-area.hover {
+            border-color: #0056b3;
+            background-color: #e9ecef;
+        }
+        .upload-area p {
+            margin: 0;
+            font-size: 18px;
+        }
+        .upload-area input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Order Reporting System</h1>
+
+    <!-- Navigation Links -->
+    <nav>
+        <a href="#">Home</a>
+        <a href="#upload-csv">Upload CSV</a>
+        <a href="#view-reports">View Reports</a>
+    </nav>
+
+    <!-- CSV Upload Section with Drag and Drop -->
+    <section id="upload-csv">
+        <h2>Upload CSV</h2>
+        <div class="upload-area" id="upload-area">
+            <p>Drag & Drop CSV File Here or Click to Upload</p>
+            <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+                <input type="file" name="csvfile" accept=".csv" id="file-input">
+                <button type="submit">Upload</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- View Reports Section -->
+    <section id="view-reports">
+        <h2>View Reports</h2>
+        <p>Coming soon...</p>
+    </section>
+
+    <script>
+        // Handle drag and drop functionality
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+
+        // Highlight drag area on hover
+        uploadArea.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            uploadArea.classList.add('hover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('hover');
+        });
+
+        // Handle file drop
+        uploadArea.addEventListener('drop', (event) => {
+            event.preventDefault();
+            uploadArea.classList.remove('hover');
+
+            const files = event.dataTransfer.files;
+            if (files.length) {
+                fileInput.files = files;
+                document.getElementById('upload-form').submit();
+            }
+        });
+
+        // Allow clicking on the upload area to trigger the file input
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Submit the form when a file is selected via the input
+        fileInput.addEventListener('change', () => {
+            document.getElementById('upload-form').submit();
+        });
+    </script>
+</body>
+</html>
