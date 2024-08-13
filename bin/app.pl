@@ -7,6 +7,23 @@ use Application::UploadCSVUseCase;
 use Application::GeneratePDFUseCase;
 use Application::Validation qw(validate_csv_file validate_order_ids);
 
+# ========================================================
+# Run Migrations Before Starting the App
+# ========================================================
+sub run_migrations {
+    my $migration_script = 'bin/run_migrations.pl';
+    my $output = system("perl $migration_script");
+
+    if ($output != 0) {
+        die "Failed to execute migrations script: $migration_script";
+    }
+
+    print "Migrations completed successfully.\n";
+}
+
+# Call the function to run migrations
+run_migrations();
+
 app->static->paths->[0] = './public';
 
 # ========================================================
