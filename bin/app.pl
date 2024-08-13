@@ -1,14 +1,15 @@
-#!/usr/bin/env perl
 use Mojolicious::Lite;
-use lib 'lib';  # Ensure the 'lib' directory is included
+use lib 'lib';
 
-use Model::DB;
-use Service::CSVProcessor;
+use Infrastructure::Persistence::SQLiteOrderRepository;
+use Infrastructure::Persistence::DBConnection;
+use Application::UploadCSVUseCase;
+use Application::GeneratePDFUseCase;
 
 # Serve static files from the 'public' directory
 app->static->paths->[0] = './public';
 
-# Route to serve the homepage (index.html)
+# Serve the homepage (index.html)
 get '/' => sub {
     my $c = shift;
     $c->reply->static('index.html');
@@ -17,22 +18,17 @@ get '/' => sub {
 # Route to handle CSV file upload
 post '/upload' => sub {
     my $c = shift;
-    my $upload = $c->param('csvfile');  # Uploaded CSV file
+    my $upload = $c->param('csvfile');
 
     unless ($upload) {
         return $c->render(json => { error => "No file uploaded" }, status => 400);
     }
 
-    # Read the uploaded CSV file content
     my $csv_content = $upload->slurp;
-
-    # Connect to the database
-    my $dbh = Model::DB::connect();
-
-    # Process the uploaded CSV file content
-    my $message = eval {
-        Service::CSVProcessor::process_csv(\$csv_content, $dbh);
-    };
+    my $dbh = Infrastructure::Persistence::DBConnection::connect();  # Use the new DBConnection module
+    my $use_case = Application::UploadCSVUseCase->new($dbh);
+    my $message = eval { $use_case->execute(\$csv_content) };
+    
     if ($@) {
         return $c->render(json => { error => "Failed to process CSV: $@" }, status => 500);
     }
@@ -44,52 +40,34 @@ post '/upload' => sub {
 get '/api/list_orders' => sub {
     my $c = shift;
 
-    my $dbh = Model::DB::connect();
-    my $sth = $dbh->prepare("SELECT order_id, order_number, order_date FROM orders");
-    $sth->execute();
+    my $dbh = Infrastructure::Persistence::DBConnection::connect();  # Use the new DBConnection module
+    my $order_repository = Infrastructure::Persistence::SQLiteOrderRepository->new($dbh);
+    my $orders = $order_repository->find_all();
 
-    my @orders;
-    while (my $row = $sth->fetchrow_hashref) {
-        push @orders, $row;
-    }
-
-    return $c->render(json => \@orders);
+    return $c->render(json => $orders);
 };
 
-# API route to get order details
-get '/api/order_details' => sub {
+# API route to generate PDF
+post '/api/generate_pdf' => sub {
     my $c = shift;
-    my $order_id = $c->param('order_id');
+    my $order_ids = $c->req->json->{order_ids};
 
-    my $dbh = Model::DB::connect();
-    my $sth = $dbh->prepare("
-        SELECT o.order_id, o.order_number, o.order_date, 
-               c.first_name, c.last_name, 
-               i.item_name, i.manufacturer, i.price
-        FROM orders o
-        JOIN customers c ON o.customer_id = c.customer_id
-        JOIN items i ON o.order_id = i.order_id
-        WHERE o.order_id = ?
-    ");
-    $sth->execute($order_id);
-
-    my @details;
-    while (my $row = $sth->fetchrow_hashref) {
-        push @details, $row;
+    if (!@$order_ids) {
+        return $c->render(json => { error => "No orders selected" }, status => 400);
     }
 
-    return $c->render(json => \@details);
-};
+    my $dbh = Infrastructure::Persistence::DBConnection::connect();
+    my $pdf_file = eval {
+        Infrastructure::PDFGenerator::generate_pdf($dbh, $order_ids);
+    };
 
-# API route to generate PDF (simplified example)
-get '/api/generate_pdf' => sub {
-    my $c = shift;
-    my $order_id = $c->param('order_id');
+    if ($@ || !$pdf_file) {
+        return $c->render(json => { error => "Failed to generate PDF: $@" }, status => 500);
+    }
 
-    # Generate and serve a simple PDF (you can replace this with your actual PDF logic)
-    my $pdf_content = "Order ID: $order_id\nOrder Number: 123\nOrder Date: 2024-08-12\n...";
     $c->res->headers->content_disposition('attachment; filename="order_report.pdf"');
-    $c->render(data => $pdf_content, format => 'pdf');
+    $c->res->headers->content_type('application/pdf');
+    return $c->reply->file($pdf_file);
 };
 
 # Start the Mojolicious application

@@ -7,7 +7,9 @@ my $builder = Module::Build->new(
         'DBI'          => 0,
         'DBD::SQLite'  => 0,
         'Text::CSV'    => 0,
-        'PDF::API2'    => 0,
+        'Mojolicious'  => 0,
+        'File::Slurp'  => 0,
+        'File::Temp'   => 0,
     },
 );
 

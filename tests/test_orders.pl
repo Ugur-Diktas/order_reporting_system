@@ -3,8 +3,8 @@ use warnings;
 use Test::More;
 
 BEGIN { use_ok('Model::DB') };
-BEGIN { use_ok('Model::Customers') };
-BEGIN { use_ok('Model::Orders') };
-BEGIN { use_ok('Model::Items') };
+BEGIN { use_ok('Domain::Entities::Customer') };
+BEGIN { use_ok('Infrastructure::Persistence::SQLiteCustomerRepository') };
+BEGIN { use_ok('Application::UploadCSVUseCase') };
 
 done_testing();

@@ -82,12 +82,14 @@
     <section id="view-orders">
         <h2>Orders</h2>
         <div id="orders-list">
+            <button id="select-all-btn">Select / Unselect All</button>
+            <button id="generate-pdf-btn">Generate PDF</button>
             <table>
                 <thead>
                     <tr>
+                        <th><input type="checkbox" id="select-all"></th>
                         <th>Order Number</th>
                         <th>Order Date</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="orders-table-body">
@@ -101,6 +103,8 @@
         // Handle drag and drop functionality
         const uploadArea = document.getElementById('upload-area');
         const fileInput = document.getElementById('file-input');
+        const selectAllCheckbox = document.getElementById('select-all');
+        const generatePdfBtn = document.getElementById('generate-pdf-btn');
 
         // Highlight drag area on hover
         uploadArea.addEventListener('dragover', (event) => {
@@ -142,16 +146,67 @@
                     const tbody = document.getElementById('orders-table-body');
                     tbody.innerHTML = ''; // Clear existing rows
                     orders.forEach(order => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${order.order_number}</td>
-                            <td>${order.order_date}</td>
-                            <td><a href="/api/generate_pdf?order_id=${order.order_id}" target="_blank">Download PDF</a></td>
-                        `;
-                        tbody.appendChild(row);
+                        if (order && order.order_number && order.order_date) {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td><input type="checkbox" class="order-checkbox" value="${order.order_id}" checked></td>
+                                <td>${order.order_number}</td>
+                                <td>${order.order_date}</td>
+                            `;
+                            tbody.appendChild(row);
+                        } else {
+                            console.warn('Invalid order data:', order);
+                        }
                     });
                 });
         }
+
+        // Handle Select All checkbox
+        selectAllCheckbox.addEventListener('change', () => {
+            const checkboxes = document.querySelectorAll('.order-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+        });
+
+        // Handle Generate PDF button
+        generatePdfBtn.addEventListener('click', () => {
+            const selectedOrders = Array.from(document.querySelectorAll('.order-checkbox'))
+                .filter(checkbox => checkbox.checked)
+                .map(checkbox => checkbox.value);
+
+            if (selectedOrders.length > 0) {
+                // Use Fetch API to send a POST request with selected orders as JSON
+                fetch('/api/generate_pdf', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ order_ids: selectedOrders }),
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.blob();  // Get the PDF as a Blob
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'order_report.pdf';  // Set the default file name
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                })
+                .catch(error => {
+                    console.error('Failed to generate PDF:', error);
+                });
+            } else {
+                alert('Please select at least one order to generate the PDF.');
+            }
+        });
 
         // Fetch orders on page load
         window.onload = fetchOrders;

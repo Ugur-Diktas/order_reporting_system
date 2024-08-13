@@ -1,4 +1,4 @@
-package Model::DB;
+package Infrastructure::Persistence::DBConnection;
 
 use strict;
 use warnings;
