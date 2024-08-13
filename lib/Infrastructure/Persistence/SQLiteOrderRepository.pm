@@ -13,32 +13,33 @@ sub new {
     return $self;
 }
 
-sub find_by_id {
-    my ($self, $order_id) = @_;
-    my $sth = $self->{dbh}->prepare("SELECT order_id, order_number, order_date, customer_id FROM orders WHERE order_id = ?");
-    $sth->execute($order_id);
-    my $row = $sth->fetchrow_hashref;
-    return unless $row;
-    return Domain::Entities::Order->new($row->{order_id}, $row->{order_number}, $row->{order_date}, $row->{customer_id});
-}
-
-sub insert {
-    my ($self, $order) = @_;
-    my $sth = $self->{dbh}->prepare("INSERT INTO orders (order_number, order_date, customer_id) VALUES (?, ?, ?)");
-    $sth->execute($order->order_number, $order->order_date, $order->customer_id);
-    return $self->{dbh}->last_insert_id(undef, undef, 'orders', undef);
-}
-
 sub find_all {
     my ($self) = @_;
-    my $sth = $self->{dbh}->prepare("SELECT order_id, order_number, order_date FROM orders");
+    my $sth = $self->{dbh}->prepare("
+        SELECT 
+            o.order_id, 
+            o.order_number, 
+            o.order_date, 
+            c.first_name || ' ' || c.last_name AS customer_name, 
+            i.item_name, 
+            i.manufacturer, 
+            i.price
+        FROM orders o
+        JOIN customers c ON o.customer_id = c.customer_id
+        JOIN items i ON o.order_id = i.order_id
+    ");
     $sth->execute();
+    
     my @orders;
     while (my $row = $sth->fetchrow_hashref) {
         push @orders, {
             order_id => $row->{order_id},
             order_number => $row->{order_number},
             order_date => $row->{order_date},
+            customer_name => $row->{customer_name},
+            item_name => $row->{item_name},
+            manufacturer => $row->{manufacturer},
+            price => $row->{price},
         };
     }
     return \@orders;

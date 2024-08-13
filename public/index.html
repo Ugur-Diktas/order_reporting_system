@@ -6,213 +6,306 @@
     <title>Order Reporting System</title>
     <link rel="stylesheet" href="css/styles.css">
     <style>
-        /* Add styles for the drag and drop area */
+        /* General styles */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1, h2 {
+            color: #007bff;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        /* Drag and Drop styles */
         .upload-area {
             border: 2px dashed #007bff;
             border-radius: 5px;
-            width: 100%;
-            max-width: 600px;
             padding: 30px;
-            margin: 20px auto;
             text-align: center;
-            font-family: Arial, sans-serif;
-            color: #007bff;
-            background-color: #f9f9f9;
+            margin-bottom: 20px;
+            transition: background-color 0.3s, border-color 0.3s;
         }
+
         .upload-area.hover {
             border-color: #0056b3;
             background-color: #e9ecef;
         }
+
         .upload-area p {
             margin: 0;
             font-size: 18px;
+            color: #007bff;
         }
+
         .upload-area input[type="file"] {
             display: none;
         }
-        #orders-list {
-            margin: 20px auto;
-            width: 100%;
-            max-width: 600px;
+
+        .btn {
+            display: inline-block;
+            background-color: #007bff;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
         }
-        #orders-list table {
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+        /* Table styles */
+        table {
             width: 100%;
             border-collapse: collapse;
+            margin-top: 20px;
         }
-        #orders-list th, #orders-list td {
+
+        th, td {
             padding: 10px;
             border: 1px solid #ddd;
             text-align: left;
         }
-        #orders-list th {
+
+        th {
             background-color: #f4f4f4;
         }
-        #orders-list td a {
+
+        td a {
             color: #007bff;
             text-decoration: none;
         }
-        #orders-list td a:hover {
+
+        td a:hover {
             text-decoration: underline;
         }
     </style>
 </head>
 <body>
-    <h1>Order Reporting System</h1>
+    <div class="container">
+        <h1>Order Reporting System</h1>
 
-    <!-- Navigation Links -->
-    <nav>
-        <a href="#">Home</a>
-        <a href="#upload-csv">Upload CSV</a>
-        <a href="#view-orders">View Orders</a>
-    </nav>
+        <!-- CSV Upload Section with Drag and Drop -->
+        <section id="upload-csv">
+            <h2>Upload CSV</h2>
+            <div class="upload-area" id="upload-area">
+                <p>Drag & Drop CSV File Here or Click to Upload</p>
+                <form id="upload-form" method="post" enctype="multipart/form-data">
+                    <input type="file" name="csvfile" accept=".csv" id="file-input">
+                </form>
+            </div>
+        </section>
 
-    <!-- CSV Upload Section with Drag and Drop -->
-    <section id="upload-csv">
-        <h2>Upload CSV</h2>
-        <div class="upload-area" id="upload-area">
-            <p>Drag & Drop CSV File Here or Click to Upload</p>
-            <form id="upload-form" method="post" enctype="multipart/form-data">
-                <input type="file" name="csvfile" accept=".csv" id="file-input">
-                <button type="submit">Upload</button>
-            </form>
-        </div>
-    </section>
-
-    <!-- Orders List Section -->
-    <section id="view-orders">
-        <h2>Orders</h2>
-        <div id="orders-list">
-            <button id="select-all-btn">Select / Unselect All</button>
-            <button id="generate-pdf-btn">Generate PDF</button>
-            <table>
-                <thead>
-                    <tr>
-                        <th><input type="checkbox" id="select-all"></th>
-                        <th>Order Number</th>
-                        <th>Order Date</th>
-                    </tr>
-                </thead>
-                <tbody id="orders-table-body">
-                    <!-- Orders will be populated here by JavaScript -->
-                </tbody>
-            </table>
-        </div>
-    </section>
+        <!-- Orders List Section -->
+        <section id="view-orders">
+            <h2>Orders</h2>
+            <div id="orders-list">
+                <button id="generate-pdf-btn" class="btn">Generate PDF</button>
+                <table>
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all"></th>
+                            <th>Order Number</th>
+                            <th>Order Date</th>
+                            <th>Customer Name</th>
+                            <th>Item Name</th>
+                            <th>Manufacturer</th>
+                            <th>Price</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-table-body">
+                        <!-- Orders will be populated here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
 
     <script>
-        // Handle drag and drop functionality
+        // DOM elements
         const uploadArea = document.getElementById('upload-area');
         const fileInput = document.getElementById('file-input');
-        const selectAllCheckbox = document.getElementById('select-all');
         const generatePdfBtn = document.getElementById('generate-pdf-btn');
+        const selectAllCheckbox = document.getElementById('select-all');
 
-        // Highlight drag area on hover
-        uploadArea.addEventListener('dragover', (event) => {
-            event.preventDefault();
-            uploadArea.classList.add('hover');
-        });
+        /**
+         * Initialize drag-and-drop functionality for the upload area.
+         * Adds visual feedback on drag events and automatically processes
+         * the file upon dropping.
+         */
+        function initDragAndDrop() {
+            uploadArea.addEventListener('dragover', (event) => {
+                event.preventDefault();  // Prevent default behavior to allow drop
+                uploadArea.classList.add('hover');  // Add hover effect
+            });
 
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('hover');
-        });
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('hover');  // Remove hover effect
+            });
 
-        // Handle file drop
-        uploadArea.addEventListener('drop', (event) => {
-            event.preventDefault();
-            uploadArea.classList.remove('hover');
+            uploadArea.addEventListener('drop', (event) => {
+                event.preventDefault();  // Prevent default behavior
+                uploadArea.classList.remove('hover');  // Remove hover effect
 
-            const files = event.dataTransfer.files;
-            if (files.length) {
-                uploadCSV(files[0]);  // Call the uploadCSV function directly with the dropped file
-            }
-        });
+                const files = event.dataTransfer.files;
+                if (files.length) {
+                    uploadCSV(files[0]);  // Automatically process the dropped file
+                }
+            });
 
-        // Allow clicking on the upload area to trigger the file input
-        uploadArea.addEventListener('click', () => {
-            fileInput.click();
-        });
-
-        // Handle form submission to upload CSV
-        document.getElementById('upload-form').addEventListener('submit', function (event) {
-            event.preventDefault();  // Prevent the default form submission
-            const fileInput = document.getElementById('file-input');
-            if (fileInput.files.length > 0) {
-                uploadCSV(fileInput.files[0]);  // Call the uploadCSV function with the selected file
-            } else {
-                alert('Please select a file to upload.');
-            }
-        });
-
-        // Fetch and display orders
-        function fetchOrders() {
-            fetch('/api/list_orders')
-                .then(response => response.json())
-                .then(orders => {
-                    const tbody = document.getElementById('orders-table-body');
-                    tbody.innerHTML = ''; // Clear existing rows
-                    orders.forEach(order => {
-                        if (order && order.order_number && order.order_date) {
-                            const row = document.createElement('tr');
-                            row.innerHTML = `
-                                <td><input type="checkbox" class="order-checkbox" value="${order.order_id}" checked></td>
-                                <td>${order.order_number}</td>
-                                <td>${order.order_date}</td>
-                            `;
-                            tbody.appendChild(row);
-                        } else {
-                            console.warn('Invalid order data:', order);
-                        }
-                    });
-                });
+            // Allow clicking on the upload area to trigger the file input
+            uploadArea.addEventListener('click', () => {
+                fileInput.click();
+            });
         }
 
-        // Handle Select All checkbox
-        selectAllCheckbox.addEventListener('change', () => {
-            const checkboxes = document.querySelectorAll('.order-checkbox');
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = selectAllCheckbox.checked;
-            });
+        /**
+         * Automatically process the file after it's selected from the file input.
+         */
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                uploadCSV(fileInput.files[0]);  // Call the uploadCSV function with the selected file
+            }
         });
 
-        // Handle Generate PDF button
-        generatePdfBtn.addEventListener('click', () => {
-            const selectedOrders = Array.from(document.querySelectorAll('.order-checkbox'))
-                .filter(checkbox => checkbox.checked)
-                .map(checkbox => checkbox.value);
+        /**
+         * Fetch and display the list of orders.
+         * Makes an API call to fetch orders and populate the table.
+         */
+        async function fetchOrders() {
+            try {
+                const response = await fetch('/api/list_orders');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch orders: ' + response.statusText);
+                }
+                const orders = await response.json();
+                populateOrdersTable(orders);
+            } catch (error) {
+                console.error(error);
+                alert('An error occurred while fetching orders.');
+            }
+        }
 
-            if (selectedOrders.length > 0) {
-                // Use Fetch API to send a POST request with selected orders as JSON
-                fetch('/api/generate_pdf', {
+        /**
+         * Populate the orders table with data.
+         * Iterates through the list of orders and adds them to the table.
+         * @param {Array} orders - List of orders to display.
+         */
+        function populateOrdersTable(orders) {
+            const tbody = document.getElementById('orders-table-body');
+            tbody.innerHTML = '';  // Clear existing rows
+
+            orders.forEach(order => {
+                if (order && order.order_number && order.order_date) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><input type="checkbox" class="order-checkbox" value="${order.order_id}" checked></td>
+                        <td>${order.order_number}</td>
+                        <td>${order.order_date}</td>
+                        <td>${order.customer_name}</td>
+                        <td>${order.item_name}</td>
+                        <td>${order.manufacturer}</td>
+                        <td>${order.price}</td>
+                    `;
+                    tbody.appendChild(row);
+                } else {
+                    console.warn('Invalid order data:', order);
+                }
+            });
+        }
+
+        /**
+         * Initialize "Select All" checkbox functionality.
+         * Selects or deselects all order checkboxes when "Select All" is toggled.
+         */
+        function initSelectAllCheckbox() {
+            selectAllCheckbox.addEventListener('change', () => {
+                const checkboxes = document.querySelectorAll('.order-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = selectAllCheckbox.checked;
+                });
+            });
+        }
+
+        /**
+         * Initialize "Generate PDF" button functionality.
+         * Collects selected orders and initiates PDF generation.
+         */
+        function initGeneratePDFButton() {
+            generatePdfBtn.addEventListener('click', () => {
+                const selectedOrders = Array.from(document.querySelectorAll('.order-checkbox'))
+                    .filter(checkbox => checkbox.checked)
+                    .map(checkbox => checkbox.value);
+
+                if (selectedOrders.length > 0) {
+                    generatePDF(selectedOrders);
+                } else {
+                    alert('Please select at least one order to generate the PDF.');
+                }
+            });
+        }
+
+        /**
+         * Generate a PDF with the selected orders.
+         * Sends a request to the backend to generate the PDF and triggers download.
+         * @param {Array} selectedOrders - List of selected order IDs.
+         */
+        async function generatePDF(selectedOrders) {
+            try {
+                const response = await fetch('/api/generate_pdf', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({ order_ids: selectedOrders }),
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.blob();  // Get the PDF as a Blob
-                })
-                .then(blob => {
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = 'order_report.pdf';  // Set the default file name
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                })
-                .catch(error => {
-                    console.error('Failed to generate PDF:', error);
                 });
-            } else {
-                alert('Please select at least one order to generate the PDF.');
+                if (!response.ok) {
+                    throw new Error('Failed to generate PDF: ' + response.statusText);
+                }
+                const blob = await response.blob();
+                downloadPDF(blob);
+            } catch (error) {
+                console.error(error);
+                alert('An error occurred while generating the PDF.');
             }
-        });
+        }
 
+        /**
+         * Trigger a download for the generated PDF.
+         * Creates a download link for the PDF blob and triggers a click event.
+         * @param {Blob} blob - PDF file blob.
+         */
+        function downloadPDF(blob) {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'order_report.pdf';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        /**
+         * Upload a CSV file and handle the server response.
+         * Sends the selected file to the server for processing and updates the orders list.
+         * @param {File} file - The CSV file to upload.
+         */
         async function uploadCSV(file) {
             const formData = new FormData();
             formData.append('csvfile', file);
@@ -223,18 +316,29 @@
                     body: formData
                 });
                 if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                    throw new Error('Failed to upload file: ' + response.statusText);
                 }
                 const result = await response.json();
                 alert(result.message);  // Display the message returned by the server, including duplicates
+                fetchOrders();  // Refresh the orders list after successful upload
             } catch (error) {
-                console.error('Failed to upload file:', error);
-                alert('Failed to upload file.');
+                console.error(error);
+                alert('An error occurred while uploading the file.');
             }
         }
 
-        // Fetch orders on page load
-        window.onload = fetchOrders;
+        /**
+         * Initialize all event listeners and fetch orders on page load.
+         */
+        function init() {
+            initDragAndDrop();
+            initSelectAllCheckbox();
+            initGeneratePDFButton();
+            fetchOrders();
+        }
+
+        // Run the initialization function on page load
+        window.onload = init;
     </script>
 </body>
 </html>

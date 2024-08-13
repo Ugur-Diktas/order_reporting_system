@@ -16,9 +16,4 @@ sub execute {
     return Infrastructure::PDFGenerator::generate_pdf($self->{dbh}, $order_id);
 }
 
-sub execute_multiple {
-    my ($self, $order_ids) = @_;
-    return Infrastructure::PDFGenerator::generate_pdf_multiple($self->{dbh}, $order_ids);
-}
-
 1;

@@ -62,10 +62,4 @@ foreach my $command (@commands) {
     }
 }
 
-# ========================================================
-# Success Message
-# If all commands are executed successfully, a success 
-# message is printed to indicate that the migration script
-# has been applied to the database without errors.
-# ========================================================
 print "Migration script executed successfully.\n";
