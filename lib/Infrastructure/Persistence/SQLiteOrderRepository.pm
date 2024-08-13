@@ -3,8 +3,6 @@ package Infrastructure::Persistence::SQLiteOrderRepository;
 use strict;
 use warnings;
 use Domain::Entities::Order;
-use Domain::Repositories::OrderRepository;
-use parent 'Domain::Repositories::OrderRepository';
 
 sub new {
     my ($class, $dbh) = @_;
@@ -43,6 +41,15 @@ sub find_all {
         };
     }
     return \@orders;
+}
+
+sub insert {
+    my ($self, $order) = @_;
+    
+    my $sth = $self->{dbh}->prepare("INSERT INTO orders (order_number, order_date, customer_id) VALUES (?, ?, ?)");
+    $sth->execute($order->order_number, $order->order_date, $order->customer_id);
+    
+    return $self->{dbh}->last_insert_id(undef, undef, undef, undef);
 }
 
 1;

@@ -1,13 +1,22 @@
-DROP TABLE IF EXISTS items;
-DROP TABLE IF EXISTS orders;
-DROP TABLE IF EXISTS customers;
+-- ========================================================
+-- SQL Migration Script: 001_create_tables.sql
+-- This script sets up the database schema for the order 
+-- reporting system. It creates the `customers`, `orders`, 
+-- and `items` tables if they do not already exist.
+-- ========================================================
 
+-- ========================================================
+-- Step 1: Create `customers` Table
+-- ========================================================
 CREATE TABLE IF NOT EXISTS customers (
     customer_id INTEGER PRIMARY KEY,
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL
 );
 
+-- ========================================================
+-- Step 2: Create `orders` Table
+-- ========================================================
 CREATE TABLE IF NOT EXISTS orders (
     order_id INTEGER PRIMARY KEY,
     order_number TEXT NOT NULL,
@@ -16,6 +25,9 @@ CREATE TABLE IF NOT EXISTS orders (
     FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
 );
 
+-- ========================================================
+-- Step 3: Create `items` Table
+-- ========================================================
 CREATE TABLE IF NOT EXISTS items (
     item_id INTEGER PRIMARY KEY,
     item_name TEXT NOT NULL,
