@@ -71,7 +71,7 @@
         <h2>Upload CSV</h2>
         <div class="upload-area" id="upload-area">
             <p>Drag & Drop CSV File Here or Click to Upload</p>
-            <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+            <form id="upload-form" method="post" enctype="multipart/form-data">
                 <input type="file" name="csvfile" accept=".csv" id="file-input">
                 <button type="submit">Upload</button>
             </form>
@@ -123,8 +123,7 @@
 
             const files = event.dataTransfer.files;
             if (files.length) {
-                fileInput.files = files;
-                document.getElementById('upload-form').submit();
+                uploadCSV(files[0]);  // Call the uploadCSV function directly with the dropped file
             }
         });
 
@@ -133,9 +132,15 @@
             fileInput.click();
         });
 
-        // Submit the form when a file is selected via the input
-        fileInput.addEventListener('change', () => {
-            document.getElementById('upload-form').submit();
+        // Handle form submission to upload CSV
+        document.getElementById('upload-form').addEventListener('submit', function (event) {
+            event.preventDefault();  // Prevent the default form submission
+            const fileInput = document.getElementById('file-input');
+            if (fileInput.files.length > 0) {
+                uploadCSV(fileInput.files[0]);  // Call the uploadCSV function with the selected file
+            } else {
+                alert('Please select a file to upload.');
+            }
         });
 
         // Fetch and display orders
@@ -207,6 +212,26 @@
                 alert('Please select at least one order to generate the PDF.');
             }
         });
+
+        async function uploadCSV(file) {
+            const formData = new FormData();
+            formData.append('csvfile', file);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const result = await response.json();
+                alert(result.message);  // Display the message returned by the server, including duplicates
+            } catch (error) {
+                console.error('Failed to upload file:', error);
+                alert('Failed to upload file.');
+            }
+        }
 
         // Fetch orders on page load
         window.onload = fetchOrders;

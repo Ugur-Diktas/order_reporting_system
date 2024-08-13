@@ -24,8 +24,22 @@ sub find_by_id {
 
 sub insert {
     my ($self, $customer) = @_;
-    my $sth = $self->{dbh}->prepare("INSERT INTO customers (customer_id, first_name, last_name) VALUES (?, ?, ?)");
-    $sth->execute($customer->customer_id, $customer->first_name, $customer->last_name);
+
+    eval {
+        my $sth = $self->{dbh}->prepare("INSERT INTO customers (customer_id, first_name, last_name) VALUES (?, ?, ?)");
+        $sth->execute($customer->customer_id, $customer->first_name, $customer->last_name);
+    };
+
+    if ($@) {
+        if ($@ =~ /UNIQUE constraint failed/) {
+            warn "Customer with ID " . $customer->customer_id . " already exists. Skipping insert.\n";
+            return "duplicate";
+        } else {
+            die "Failed to insert customer: $@";
+        }
+    }
+
+    return "inserted";
 }
 
 1;
