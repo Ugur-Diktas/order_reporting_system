@@ -93,6 +93,33 @@
         td a:hover {
             text-decoration: underline;
         }
+
+        /* Toast Notification styles */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #333;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out, top 0.5s ease-in-out;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            opacity: 1;
+            top: 50px;
+        }
+
+        .toast.success {
+            background-color: #28a745;
+        }
+
+        .toast.error {
+            background-color: #dc3545;
+        }
     </style>
 </head>
 <body>
@@ -144,6 +171,32 @@
         const fileInput = document.getElementById('file-input');
         const generatePdfBtn = document.getElementById('generate-pdf-btn');
         const selectAllCheckbox = document.getElementById('select-all');
+
+        /**
+         * Show a toast notification.
+         * @param {string} message - The message to display.
+         * @param {string} [type='success'] - The type of toast ('success' or 'error').
+         */
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.classList.add('toast', type);
+            toast.textContent = message;
+
+            document.body.appendChild(toast);
+
+            // Trigger the show animation
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 100);
+
+            // Remove the toast after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    toast.remove();
+                }, 500);
+            }, 3000);
+        }
 
         /**
          * Initialize drag-and-drop functionality for the upload area.
@@ -199,7 +252,7 @@
                 populateOrdersTable(orders);
             } catch (error) {
                 console.error(error);
-                alert('An error occurred while fetching orders.');
+                showToast('An error occurred while fetching orders.', 'error');
             }
         }
 
@@ -257,7 +310,7 @@
                 if (selectedOrders.length > 0) {
                     generatePDF(selectedOrders);
                 } else {
-                    alert('Please select at least one order to generate the PDF.');
+                    showToast('Please select at least one order to generate the PDF.', 'error');
                 }
             });
         }
@@ -276,7 +329,7 @@
                 if (selectedOrders.length > 0) {
                     deleteOrders(selectedOrders);
                 } else {
-                    alert('Please select at least one order to delete.');
+                    showToast('Please select at least one order to delete.', 'error');
                 }
             });
         }
@@ -300,9 +353,10 @@
                 }
                 const blob = await response.blob();
                 downloadPDF(blob);
+                showToast('PDF generated successfully.');
             } catch (error) {
                 console.error(error);
-                alert('An error occurred while generating the PDF.');
+                showToast('An error occurred while generating the PDF.', 'error');
             }
         }
 
@@ -324,11 +378,11 @@
                     throw new Error('Failed to delete orders: ' + response.statusText);
                 }
                 const result = await response.json();
-                alert(result.message);
+                showToast(result.message);
                 fetchOrders();  // Refresh the orders list after deletion
             } catch (error) {
                 console.error(error);
-                alert('An error occurred while deleting the orders.');
+                showToast('An error occurred while deleting the orders.', 'error');
             }
         }
 
@@ -366,11 +420,11 @@
                     throw new Error('Failed to upload file: ' + response.statusText);
                 }
                 const result = await response.json();
-                alert(result.message);  // Display the message returned by the server, including duplicates
+                showToast(result.message);
                 fetchOrders();  // Refresh the orders list after successful upload
             } catch (error) {
                 console.error(error);
-                alert('An error occurred while uploading the file.');
+                showToast('An error occurred while uploading the file.', 'error');
             }
         }
 
