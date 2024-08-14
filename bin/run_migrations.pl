@@ -80,6 +80,12 @@ while (my $row = $csv->getline($fh)) {
     # Parse the row and insert the data into the appropriate tables
     my ($order_date, $customer_id, $first_name, $last_name, $order_number, $item_name, $manufacturer, $price) = @$row;
 
+    # Validate required fields
+    unless ($first_name && $last_name && $customer_id) {
+        warn "Skipping row due to missing required fields: " . join(",", @$row) . "\n";
+        next;
+    }
+
     # Check if customer already exists
     my $sth = $dbh->prepare("SELECT COUNT(*) FROM customers WHERE customer_id = ?");
     $sth->execute($customer_id);

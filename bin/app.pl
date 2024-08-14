@@ -165,4 +165,38 @@ post '/api/generate_pdf' => sub {
     return $c->reply->file($pdf_file);
 };
 
+# ========================================================
+# Route: Delete Orders
+# POST /api/delete_orders
+# This route deletes the selected orders from the database.
+# The order IDs are validated and then passed to the 
+# repository to delete the orders.
+# ========================================================
+post '/api/delete_orders' => sub {
+    my $c = shift;
+    my $order_ids = $c->req->json->{order_ids};
+
+    # Validate order IDs input
+    my ($valid, $error) = validate_order_ids($order_ids);
+    unless ($valid) {
+        return render_error($c, $error, 400);
+    }
+
+    # Establish a database connection
+    my $dbh = eval { establish_db_connection() };
+    if ($@) {
+        return render_error($c, $@, 500);
+    }
+
+    # Delete the selected orders
+    my $order_repository = Infrastructure::Persistence::SQLiteOrderRepository->new($dbh);
+    my $deleted_count = eval { $order_repository->delete_orders($order_ids) };
+
+    if ($@) {
+        return render_error($c, "Failed to delete orders: $@", 500);
+    }
+
+    return $c->render(json => { message => "$deleted_count orders deleted successfully." });
+};
+
 app->start;

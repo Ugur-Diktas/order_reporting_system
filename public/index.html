@@ -114,6 +114,9 @@
         <section id="view-orders">
             <h2>Orders</h2>
             <div id="orders-list">
+                <!-- New Delete Orders Button -->
+                <button id="delete-orders-btn" class="btn">Delete Orders</button>
+                <!-- Existing Generate PDF Button -->
                 <button id="generate-pdf-btn" class="btn">Generate PDF</button>
                 <table>
                     <thead>
@@ -260,6 +263,25 @@
         }
 
         /**
+         * Initialize "Delete Orders" button functionality.
+         * Collects selected orders and initiates deletion.
+         */
+        function initDeleteOrdersButton() {
+            const deleteOrdersBtn = document.getElementById('delete-orders-btn');
+            deleteOrdersBtn.addEventListener('click', () => {
+                const selectedOrders = Array.from(document.querySelectorAll('.order-checkbox'))
+                    .filter(checkbox => checkbox.checked)
+                    .map(checkbox => checkbox.value);
+
+                if (selectedOrders.length > 0) {
+                    deleteOrders(selectedOrders);
+                } else {
+                    alert('Please select at least one order to delete.');
+                }
+            });
+        }
+
+        /**
          * Generate a PDF with the selected orders.
          * Sends a request to the backend to generate the PDF and triggers download.
          * @param {Array} selectedOrders - List of selected order IDs.
@@ -281,6 +303,32 @@
             } catch (error) {
                 console.error(error);
                 alert('An error occurred while generating the PDF.');
+            }
+        }
+
+        /**
+         * Delete selected orders.
+         * Sends a request to the backend to delete the orders and refreshes the list.
+         * @param {Array} selectedOrders - List of selected order IDs.
+         */
+        async function deleteOrders(selectedOrders) {
+            try {
+                const response = await fetch('/api/delete_orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ order_ids: selectedOrders }),
+                });
+                if (!response.ok) {
+                    throw new Error('Failed to delete orders: ' + response.statusText);
+                }
+                const result = await response.json();
+                alert(result.message);
+                fetchOrders();  // Refresh the orders list after deletion
+            } catch (error) {
+                console.error(error);
+                alert('An error occurred while deleting the orders.');
             }
         }
 
@@ -333,6 +381,7 @@
             initDragAndDrop();
             initSelectAllCheckbox();
             initGeneratePDFButton();
+            initDeleteOrdersButton();
             fetchOrders();
         }
 

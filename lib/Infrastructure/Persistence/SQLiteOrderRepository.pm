@@ -52,4 +52,32 @@ sub insert {
     return $self->{dbh}->last_insert_id(undef, undef, undef, undef);
 }
 
+sub find_or_insert {
+    my ($self, $order_number, $order_date, $customer_id) = @_;
+
+    my $sth = $self->{dbh}->prepare("SELECT order_id FROM orders WHERE order_number = ? AND customer_id = ?");
+    $sth->execute($order_number, $customer_id);
+    my ($order_id) = $sth->fetchrow_array();
+
+    unless ($order_id) {
+        $sth = $self->{dbh}->prepare("INSERT INTO orders (order_number, order_date, customer_id) VALUES (?, ?, ?)");
+        $sth->execute($order_number, $order_date, $customer_id);
+        $order_id = $self->{dbh}->last_insert_id(undef, undef, "orders", "order_id");
+        return $order_id;
+    }
+
+    return undef;  # Order already exists, return undef
+}
+
+sub delete_orders {
+    my ($self, $order_ids) = @_;
+
+    my $placeholders = join(',', ('?') x @$order_ids);
+    my $sth = $self->{dbh}->prepare("DELETE FROM orders WHERE order_id IN ($placeholders)");
+
+    $sth->execute(@$order_ids);
+
+    return $sth->rows;
+}
+
 1;

@@ -11,78 +11,96 @@ use Infrastructure::Persistence::SQLiteItemRepository;
 
 # ========================================================
 # Function: process_csv
-# This function processes the CSV content provided, extracting and inserting
-# customer, order, and item data into the appropriate database tables.
+# Description:
+#   This function processes the content of a CSV file that contains data
+#   related to customers, orders, and items. It reads each row from the CSV,
+#   validates the data, and then inserts it into the appropriate tables in
+#   the SQLite database. The function ensures that duplicate customers are 
+#   skipped and that no invalid data is inserted into the database.
 #
-# Params:
-#   - $csv_content_ref: A reference to the CSV content (scalar reference)
-#   - $customer_repository: An instance of SQLiteCustomerRepository for handling customer-related database operations
-#   - $dbh: The database handle for executing SQL queries
+# Parameters:
+#   - $csv_content_ref: A reference to the CSV content. This is expected to 
+#                       be a scalar reference containing the entire CSV file.
+#   - $customer_repository: An instance of SQLiteCustomerRepository that handles
+#                           database operations related to customers.
+#   - $dbh: A database handle for executing SQL queries.
 #
 # Returns:
-#   - A message string detailing the results of the CSV processing, including the number of duplicate customers skipped
+#   - A string message detailing the result of the CSV processing. This includes
+#     a summary of the number of customers inserted and the number of duplicates 
+#     that were skipped.
 #
-# Die/Exception:
-#   - Dies with an error message if the CSV content is invalid or if there is an issue opening the CSV file.
+# Exceptions:
+#   - Dies with an error message if the CSV content is invalid or if there is
+#     an issue opening or processing the CSV file.
+#
+# Example Usage:
+#   my $csv_content = 'order_date,customer_id,first_name,last_name,order_number,item_name,manufacturer,price\n...';
+#   my $message = process_csv(\$csv_content, $customer_repository, $dbh);
+#   print $message;
 # ========================================================
 sub process_csv {
     my ($csv_content_ref, $customer_repository, $dbh) = @_;
 
-    # Validate that the CSV content is a valid scalar reference
     die "Invalid CSV content provided" unless $csv_content_ref && ref $csv_content_ref eq 'SCALAR';
 
-    # Attempt to open the CSV content for reading
     open my $fh, '<', $csv_content_ref or die "Cannot open CSV content";
 
-    # Create a new Text::CSV object for parsing the CSV content
     my $csv = Text::CSV->new({ binary => 1, auto_diag => 1 });
 
-    # Skip the header row in the CSV file
-    <$fh>;
+    <$fh>; # Skip the header row
 
-    # Arrays to store details of duplicate and newly inserted customers
     my @duplicate_customers;
     my @inserted_customers;
+    my $orders_added = 0;
+    my $items_added = 0;
 
-    # Loop through each row in the CSV file
     while (my $row = $csv->getline($fh)) {
-        # Extract fields from the current CSV row
         my ($order_date, $customer_id, $first_name, $last_name, $order_number, $item_name, $manufacturer, $price) = @$row;
 
-        # Create a new Customer entity object
-        my $customer = Domain::Entities::Customer->new($customer_id, $first_name, $last_name);
+        # Skip processing if any required fields are missing
+        unless ($first_name && $last_name && $customer_id) {
+            warn "Skipping row due to missing required fields: " . join(",", @$row) . "\n";
+            next;
+        }
 
-        # Attempt to insert the customer into the database
-        my $result = $customer_repository->insert($customer);
-
-        # Handle duplicate customer scenarios
-        if ($result eq "duplicate") {
+        my $result;
+        if ($customer_repository->find($customer_id)) {
             push @duplicate_customers, { customer_id => $customer_id, first_name => $first_name, last_name => $last_name };
+            $result = "duplicate";
         } else {
-            push @inserted_customers, { customer_id => $customer_id, first_name => $first_name, last_name => $last_name };
+            my $customer = Domain::Entities::Customer->new($customer_id, $first_name, $last_name);
+            $result = $customer_repository->insert($customer);
+            if ($result eq "inserted") {
+                push @inserted_customers, { customer_id => $customer_id, first_name => $first_name, last_name => $last_name };
+            }
+        }
 
-            # Insert the corresponding order and item into the database
-            my $order_repository = Infrastructure::Persistence::SQLiteOrderRepository->new($dbh);
-            my $order = Domain::Entities::Order->new(undef, $order_number, $order_date, $customer_id);
-            my $order_id = $order_repository->insert($order);
+        # Insert order and item records regardless of customer status
+        my $order_repository = Infrastructure::Persistence::SQLiteOrderRepository->new($dbh);
+        my $order_id = $order_repository->find_or_insert($order_number, $order_date, $customer_id);
 
-            my $item_repository = Infrastructure::Persistence::SQLiteItemRepository->new($dbh);
-            my $item = Domain::Entities::Item->new(undef, $item_name, $manufacturer, $price, $order_id);
-            $item_repository->insert($item);
+        if ($order_id) {
+            $orders_added++;
+        }
+
+        my $item_repository = Infrastructure::Persistence::SQLiteItemRepository->new($dbh);
+        my $item_id = $item_repository->find_or_insert($item_name, $manufacturer, $price, $order_id);
+
+        if ($item_id) {
+            $items_added++;
         }
     }
 
-    # Close the file handle after processing
     close $fh;
 
-    # Construct a result message detailing the processing outcome
+    # Prepare a summary message of the results
     my $message = "CSV data has been successfully imported!\n";
-    $message .= scalar(@duplicate_customers) . " duplicate customers were skipped:\n";
-    foreach my $dup (@duplicate_customers) {
-        $message .= "Customer ID: $dup->{customer_id}, Name: $dup->{first_name} $dup->{last_name}\n";
-    }
+    $message .= scalar(@inserted_customers) . " customers were added.\n";
+    $message .= scalar(@duplicate_customers) . " duplicate customers were skipped.\n";
+    $message .= "$orders_added orders were added.\n";
+    $message .= "$items_added items were added.";
 
-    # Return the result message
     return $message;
 }
 

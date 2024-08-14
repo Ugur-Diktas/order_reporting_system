@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS orders (
     order_number TEXT NOT NULL,
     order_date TEXT NOT NULL,
     customer_id INTEGER,
-    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE
 );
 
 -- ========================================================
@@ -34,5 +34,5 @@ CREATE TABLE IF NOT EXISTS items (
     manufacturer TEXT NOT NULL,
     price REAL NOT NULL,
     order_id INTEGER,
-    FOREIGN KEY (order_id) REFERENCES orders(order_id)
+    FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE
 );

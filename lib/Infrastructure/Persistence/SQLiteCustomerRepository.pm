@@ -31,4 +31,15 @@ sub insert {
     return "inserted";
 }
 
+sub find {
+    my ($self, $customer_id) = @_;
+
+    my $sth = $self->{dbh}->prepare("SELECT customer_id FROM customers WHERE customer_id = ?");
+    $sth->execute($customer_id);
+
+    my ($found_customer_id) = $sth->fetchrow_array();
+
+    return defined $found_customer_id ? 1 : 0;
+}
+
 1;
