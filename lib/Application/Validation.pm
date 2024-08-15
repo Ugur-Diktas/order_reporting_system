@@ -1,9 +1,15 @@
 package Application::Validation;
+
 use strict;
 use warnings;
 use Exporter 'import';
 our @EXPORT_OK = qw(validate_csv_file validate_order_ids);
 
+# ========================================================
+# Function: validate_csv_file
+# Validates that the uploaded file is a valid CSV file.
+# Returns (1, "Valid CSV file") if valid, otherwise (0, error message).
+# ========================================================
 sub validate_csv_file {
     my ($upload) = @_;
 
@@ -18,6 +24,11 @@ sub validate_csv_file {
     return (1, "Valid CSV file");
 }
 
+# ========================================================
+# Function: validate_order_ids
+# Validates that the provided order IDs are an array of valid integers.
+# Returns (1, "Valid order IDs") if valid, otherwise (0, error message).
+# ========================================================
 sub validate_order_ids {
     my ($order_ids) = @_;
 

@@ -5,21 +5,24 @@ use warnings;
 use PDF::API2;
 use File::Path qw(make_path);
 use File::Spec;
-use File::Basename;
 
 # ========================================================
 # Function: generate_pdf
+# Generates a PDF report based on the given order IDs. The PDF 
+# includes customer details, order information, and item details.
+# The generated PDF is saved in the `generated_pdfs` directory 
+# with a unique filename.
 # ========================================================
 sub generate_pdf {
     my ($dbh, $order_ids) = @_;
 
+    # Create a new PDF document
     my $pdf = PDF::API2->new();
     my $page = $pdf->page();
     $page->mediabox('Letter');
 
     # Fonts and styles
     my $font_title = $pdf->corefont('Helvetica-Bold');
-    my $font_header = $pdf->corefont('Helvetica');
     my $font_bold = $pdf->corefont('Helvetica-Bold');
     my $font_regular = $pdf->corefont('Helvetica');
     my $font_italic = $pdf->corefont('Helvetica-Oblique');
@@ -36,9 +39,10 @@ sub generate_pdf {
     $footer->translate(300, 20);
     $footer->text('Page 1');
 
-    # Order details start below the header
+    # Start position for order details
     my $y_position = 720;
 
+    # Fetch order details from the database
     my $sth = $dbh->prepare("
         SELECT c.customer_id, c.first_name, c.last_name, 
                i.item_name, i.manufacturer, i.price, 
@@ -51,10 +55,11 @@ sub generate_pdf {
     ");
     $sth->execute(@$order_ids);
 
-    my $current_customer_id = undef;
+    my $current_customer_id;
 
+    # Process each order and add to the PDF
     while (my $row = $sth->fetchrow_hashref) {
-        # Add a new page if the content overflows
+        # Add a new page if content overflows
         if ($y_position < 100) {
             $page = $pdf->page();
             $text = $page->text();
@@ -68,7 +73,7 @@ sub generate_pdf {
             $footer->text('Page ' . $pdf->pages);
         }
 
-        # Print customer name and ID
+        # Print customer details if changed
         if (!defined $current_customer_id || $current_customer_id != $row->{customer_id}) {
             $current_customer_id = $row->{customer_id};
             $text->font($font_bold, 16);
@@ -96,13 +101,13 @@ sub generate_pdf {
         $y_position -= 30;
     }
 
-    # Define the directory and ensure it exists
+    # Ensure the directory for PDFs exists
     my $directory = 'generated_pdfs';
     unless (-d $directory) {
         make_path($directory) or die "Failed to create directory: $directory";
     }
 
-    # Generate a unique filename
+    # Generate a unique filename for the PDF
     my $base_filename = 'orders_report';
     my $ext = '.pdf';
     my $pdf_filename = File::Spec->catfile($directory, $base_filename . $ext);

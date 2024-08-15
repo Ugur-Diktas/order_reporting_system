@@ -1,11 +1,13 @@
 -- ========================================================
 -- SQL Migration Script: 001_create_tables.sql
 -- This script sets up the database schema for the order 
--- reporting system according to the revised structure.
+-- reporting system.
 -- ========================================================
 
 -- ========================================================
--- Step 1: Create `orders` Table
+-- Create `orders` Table
+-- This table stores all orders and references both customers 
+-- and items via foreign keys.
 -- ========================================================
 CREATE TABLE IF NOT EXISTS orders (
     order_id INTEGER PRIMARY KEY,
@@ -18,22 +20,24 @@ CREATE TABLE IF NOT EXISTS orders (
 );
 
 -- ========================================================
--- Step 2: Create `customers` Table
+-- Create `customers` Table
+-- This table stores customer information. The customer_id 
+-- is referenced by the orders table.
 -- ========================================================
 CREATE TABLE IF NOT EXISTS customers (
     customer_id INTEGER PRIMARY KEY,
     first_name TEXT NOT NULL,
-    last_name TEXT NOT NULL,
-    FOREIGN KEY (customer_id) REFERENCES orders(customer_id) ON DELETE CASCADE
+    last_name TEXT NOT NULL
 );
 
 -- ========================================================
--- Step 3: Create `items` Table
+-- Create `items` Table
+-- This table stores item details. The item_id is referenced 
+-- by the orders table.
 -- ========================================================
 CREATE TABLE IF NOT EXISTS items (
     item_id INTEGER PRIMARY KEY,
     item_name TEXT NOT NULL,
     manufacturer TEXT NOT NULL,
-    price REAL NOT NULL,
-    FOREIGN KEY (item_id) REFERENCES orders(item_id) ON DELETE CASCADE
+    price REAL NOT NULL
 );

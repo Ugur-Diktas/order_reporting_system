@@ -17,14 +17,14 @@ my $dbh = DBI->connect("dbi:SQLite:dbname=$db_path", "", "", {
 }) or croak("Failed to connect to the database: $DBI::errstr");
 
 # ========================================================
-# Read SQL Script
+# Read SQL Migration Script
 # ========================================================
 my $sql_file = 'db/migrations/001_create_tables.sql';
 my $sql = eval { read_file($sql_file) };
 croak("Failed to read SQL file '$sql_file': $@") if $@;
 
 # ========================================================
-# SQL Command Execution
+# Execute SQL Commands
 # ========================================================
 my @commands = split(/;/, $sql);
 
@@ -32,76 +32,64 @@ foreach my $command (@commands) {
     next unless $command =~ /\S/;  # Skip empty commands
     $command .= ';';  # Re-add the semicolon for execution
     eval {
-        my $result = $dbh->do($command);
-        die "Failed to execute SQL command: $command\n" unless $result;
+        $dbh->do($command) or die "Failed to execute SQL command: $command\n";
     };
-    if ($@) {
-        croak("An error occurred during migration: $@");
-    }
+    croak("An error occurred during migration: $@") if $@;
 }
 
 print "Migration script executed successfully.\n";
 
 # ========================================================
-# Process Initial Data (CSV)
+# Load Initial Data from CSV
+# Loads initial data from 'orders.csv' into the database.
 # ========================================================
 my $csv_file = 'db/seeds/orders.csv';
-open my $fh, "<:encoding(utf8)", $csv_file or croak("Failed to open CSV file: $!");
+open my $fh, "<:encoding(utf8)", $csv_file or croak("Failed to open CSV file: $csv_file");
 
-my $csv = Text::CSV->new({ binary => 1, auto_diag => 1 });  # Create a new Text::CSV object
+my $csv = Text::CSV->new({ binary => 1, auto_diag => 1 });
 <$fh>;  # Skip the header row
 
 while (my $row = $csv->getline($fh)) {
     my ($order_date, $customer_id, $first_name, $last_name, $order_number, $item_name, $manufacturer, $price) = @$row;
 
-    # Validate required fields for customers
+    # Validate and insert customer data
     unless ($first_name && $last_name && $customer_id) {
-        warn "Skipping row due to missing required customer fields: " . join(",", @$row) . "\n";
+        warn "Skipping row due to missing customer fields: " . join(",", @$row) . "\n";
         next;
     }
 
-    # Check if customer already exists
-    my $sth = $dbh->prepare("SELECT COUNT(*) FROM customers WHERE customer_id = ?");
+    my $sth = $dbh->prepare("SELECT customer_id FROM customers WHERE customer_id = ?");
     $sth->execute($customer_id);
-    my ($customer_exists) = $sth->fetchrow_array();
-
-    # Insert customer if it doesn't exist
-    if (!$customer_exists) {
+    unless ($sth->fetchrow_array) {
         $sth = $dbh->prepare("INSERT INTO customers (customer_id, first_name, last_name) VALUES (?, ?, ?)");
         $sth->execute($customer_id, $first_name, $last_name);
     }
 
-    # Validate required fields for items
+    # Validate and insert item data
     unless ($item_name && $manufacturer && defined $price) {
-        warn "Skipping row due to missing required item fields: " . join(",", @$row) . "\n";
+        warn "Skipping row due to missing item fields: " . join(",", @$row) . "\n";
         next;
     }
 
-    # Check if item already exists
     $sth = $dbh->prepare("SELECT item_id FROM items WHERE item_name = ? AND manufacturer = ? AND price = ?");
     $sth->execute($item_name, $manufacturer, $price);
-    my ($item_id) = $sth->fetchrow_array();
+    my $item_id = $sth->fetchrow_array;
 
-    # Insert item if it doesn't exist
-    if (!$item_id) {
+    unless ($item_id) {
         $sth = $dbh->prepare("INSERT INTO items (item_name, manufacturer, price) VALUES (?, ?, ?)");
         $sth->execute($item_name, $manufacturer, $price);
         $item_id = $dbh->last_insert_id(undef, undef, "items", "item_id");
     }
 
-    # Validate required fields for orders
+    # Validate and insert order data
     unless ($order_number && $order_date && $item_id && $customer_id) {
-        warn "Skipping row due to missing required order fields: " . join(",", @$row) . "\n";
+        warn "Skipping row due to missing order fields: " . join(",", @$row) . "\n";
         next;
     }
 
-    # Check if order already exists
     $sth = $dbh->prepare("SELECT order_id FROM orders WHERE order_number = ? AND customer_id = ? AND item_id = ?");
     $sth->execute($order_number, $customer_id, $item_id);
-    my ($order_id) = $sth->fetchrow_array();
-
-    # Insert order if it doesn't exist
-    if (!$order_id) {
+    unless ($sth->fetchrow_array) {
         $sth = $dbh->prepare("INSERT INTO orders (order_number, order_date, customer_id, item_id) VALUES (?, ?, ?, ?)");
         $sth->execute($order_number, $order_date, $customer_id, $item_id);
     }

@@ -11,10 +11,14 @@ use Infrastructure::Persistence::SQLiteItemRepository;
 
 # ========================================================
 # Function: process_csv
+# Processes the CSV content by reading each row, validating the 
+# required fields, and inserting the data into the appropriate tables.
+# Returns a success message upon completion.
 # ========================================================
 sub process_csv {
     my ($csv_content_ref, $customer_repository, $dbh) = @_;
 
+    # Validate that the CSV content reference is valid
     die "Invalid CSV content provided" unless $csv_content_ref && ref $csv_content_ref eq 'SCALAR';
 
     open my $fh, '<', $csv_content_ref or die "Cannot open CSV content";
@@ -23,10 +27,8 @@ sub process_csv {
 
     <$fh>; # Skip the header row
 
-    my @duplicate_customers;
     my @inserted_customers;
     my $orders_added = 0;
-    my $items_added = 0;
 
     my %processed_orders;
 
@@ -43,13 +45,11 @@ sub process_csv {
         }
 
         # Insert customer if not already present
-        my $result;
-        if (!$customer_repository->find($customer_id)) {
+        unless ($customer_repository->find($customer_id)) {
             my $customer = Domain::Entities::Customer->new($customer_id, $first_name, $last_name);
-            $result = $customer_repository->insert($customer);
-            if ($result eq "inserted") {
-                push @inserted_customers, { customer_id => $customer_id, first_name => $first_name, last_name => $last_name };
-            }
+            my $result = $customer_repository->insert($customer);
+            push @inserted_customers, { customer_id => $customer_id, first_name => $first_name, last_name => $last_name }
+                if $result eq "inserted";
         }
 
         # Insert item or find existing item ID
@@ -73,7 +73,6 @@ sub process_csv {
     close $fh;
 
     my $message = "CSV data has been successfully imported!\n";
-
     return $message;
 }
 

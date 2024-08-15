@@ -4,6 +4,10 @@ use strict;
 use warnings;
 use Domain::Entities::Customer;
 
+# ========================================================
+# Constructor: new
+# Initializes the SQLiteCustomerRepository with a database handle.
+# ========================================================
 sub new {
     my ($class, $dbh) = @_;
     my $self = { dbh => $dbh };
@@ -11,11 +15,19 @@ sub new {
     return $self;
 }
 
+# ========================================================
+# Method: insert
+# Inserts a new customer into the database.
+# Returns "inserted" on success, "duplicate" if the customer 
+# already exists, and dies with an error message if insertion fails.
+# ========================================================
 sub insert {
     my ($self, $customer) = @_;
 
     eval {
-        my $sth = $self->{dbh}->prepare("INSERT INTO customers (customer_id, first_name, last_name) VALUES (?, ?, ?)");
+        my $sth = $self->{dbh}->prepare(
+            "INSERT INTO customers (customer_id, first_name, last_name) VALUES (?, ?, ?)"
+        );
         $sth->execute($customer->customer_id, $customer->first_name, $customer->last_name);
     };
 
@@ -31,6 +43,11 @@ sub insert {
     return "inserted";
 }
 
+# ========================================================
+# Method: find
+# Finds a customer by ID in the database.
+# Returns 1 if the customer exists, 0 otherwise.
+# ========================================================
 sub find {
     my ($self, $customer_id) = @_;
 

@@ -19,6 +19,7 @@ BEGIN {
     use_ok('Application::GeneratePDFUseCase');
     use_ok('Infrastructure::CSVProcessor');
     use_ok('Infrastructure::PDFGenerator');
+    use_ok('Application::Validation');
 }
 
 # Utility function to create a database connection
@@ -95,6 +96,11 @@ subtest 'SQLite Repositories' => sub {
             my $item = Domain::Entities::Item->new(1, 'Fountain Pen', 'Acme', 3.25);
             $item_repository->insert($item);
             ok(1, 'Item inserted successfully');
+
+            my $duplicate_item_id = $item_repository->find_or_insert('Fountain Pen', 'Acme', 3.25);
+            ok($duplicate_item_id, 'Duplicate item found successfully');
+            is($duplicate_item_id, 1, 'Duplicate item ID is correct');
+
             $dbh->rollback;
         };
         if ($@) {
@@ -111,6 +117,11 @@ subtest 'SQLite Repositories' => sub {
             my $order = Domain::Entities::Order->new(1, 'ORD123', '2024-02-01', 1, 1);
             my $order_id = $order_repository->insert($order);
             ok($order_id, 'Order inserted successfully');
+
+            my $duplicate_order_id = $order_repository->find_or_insert('ORD123', '2024-02-01', 1, 1);
+            ok($duplicate_order_id, 'Duplicate order found successfully');
+            is($duplicate_order_id, $order_id, 'Duplicate order ID is correct');
+
             $dbh->rollback;
         };
         if ($@) {
@@ -151,17 +162,21 @@ subtest 'Order deletion' => sub {
     done_testing();
 };
 
-# Test Item Repository with Transaction
-subtest 'SQLiteItemRepository' => sub {
+# Test CSV Processing
+subtest 'CSV Processing' => sub {
     my $dbh = get_dbh();
-    my $item_repository = Infrastructure::Persistence::SQLiteItemRepository->new($dbh);
+    my $csv_content = "order_date,customer_id,first_name,last_name,order_number,item_name,manufacturer,price\n2024-02-01,1,John,Doe,ORD123,Fountain Pen,Acme,3.25";
+    my $use_case = Application::UploadCSVUseCase->new($dbh);
 
     $dbh->begin_work;
     eval {
-        my $item = Domain::Entities::Item->new(1, 'Fountain Pen', 'Acme', 3.25);
-        $item_repository->insert($item);
+        my $message = $use_case->execute(\$csv_content);
+        like($message, qr/CSV data has been successfully imported!/, 'CSV processed successfully');
 
-        ok(1, 'Item inserted successfully');
+        my $order_repository = Infrastructure::Persistence::SQLiteOrderRepository->new($dbh);
+        my $orders = $order_repository->find_all();
+        is(scalar @$orders, 1, 'One order should exist after CSV import');
+
         $dbh->rollback;
     };
     if ($@) {
@@ -171,16 +186,23 @@ subtest 'SQLiteItemRepository' => sub {
     done_testing();
 };
 
-# Test Order Repository with Transaction
-subtest 'SQLiteOrderRepository' => sub {
+# Test PDF Generation
+subtest 'PDF Generation' => sub {
     my $dbh = get_dbh();
     my $order_repository = Infrastructure::Persistence::SQLiteOrderRepository->new($dbh);
-
+    
     $dbh->begin_work;
     eval {
         my $order = Domain::Entities::Order->new(1, 'ORD123', '2024-02-01', 1, 1);
         my $order_id = $order_repository->insert($order);
-        ok($order_id, 'Order inserted successfully');
+        ok($order_id, 'Order inserted successfully for PDF test');
+        
+        my $use_case = Application::GeneratePDFUseCase->new($dbh);
+        my $pdf_file = $use_case->execute([$order_id]);
+
+        ok(-e $pdf_file, 'PDF file generated successfully');
+        unlink $pdf_file if -e $pdf_file;  # Clean up the generated PDF file
+
         $dbh->rollback;
     };
     if ($@) {
@@ -188,6 +210,37 @@ subtest 'SQLiteOrderRepository' => sub {
         die "Test failed with error: $@";
     }
     done_testing();
+};
+
+# Test Validation Utilities
+subtest 'Validation Utilities' => sub {
+    subtest 'CSV File Validation' => sub {
+        my $valid_file = File::Temp->new(SUFFIX => '.csv');
+        print $valid_file "order_date,customer_id,first_name,last_name,order_number,item_name,manufacturer,price\n";
+        my ($valid, $error) = Application::Validation::validate_csv_file($valid_file);
+        is($valid, 1, 'CSV file is valid');
+        is($error, 'Valid CSV file', 'Validation message is correct');
+
+        my $invalid_file = File::Temp->new(SUFFIX => '.txt');
+        ($valid, $error) = Application::Validation::validate_csv_file($invalid_file);
+        is($valid, 0, 'Non-CSV file is invalid');
+        is($error, 'Invalid file type. Please upload a CSV file.', 'Validation message is correct');
+
+        done_testing();
+    };
+
+    subtest 'Order ID Validation' => sub {
+        my ($valid, $error) = Application::Validation::validate_order_ids([1, 2, 3]);
+        is($valid, 1, 'Order IDs are valid');
+
+        ($valid, $error) = Application::Validation::validate_order_ids([]);
+        is($valid, 0, 'Empty order ID list is invalid');
+
+        ($valid, $error) = Application::Validation::validate_order_ids(['abc']);
+        is($valid, 0, 'Non-numeric order ID is invalid');
+
+        done_testing();
+    };
 };
 
 done_testing();

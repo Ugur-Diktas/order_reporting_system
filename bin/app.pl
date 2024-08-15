@@ -14,31 +14,27 @@ sub run_migrations {
     my $migration_script = 'bin/run_migrations.pl';
     my $output = system("perl $migration_script");
 
-    if ($output != 0) {
-        die "Failed to execute migrations script: $migration_script";
-    }
-
+    die "Failed to execute migrations script: $migration_script" if $output != 0;
     print "Migrations completed successfully.\n";
 }
 
-# Call the function to run migrations
 run_migrations();
 
 app->static->paths->[0] = './public';
 
 # ========================================================
 # Utility: Establish Database Connection
+# Connects to the database using the DBConnection module.
 # ========================================================
 sub establish_db_connection {
     my $dbh = eval { Infrastructure::Persistence::DBConnection::connect() };
-    if ($@) {
-        die "Database connection failed: $@";
-    }
+    die "Database connection failed: $@" if $@;
     return $dbh;
 }
 
 # ========================================================
 # Utility: Render Error Response
+# Sends a JSON error response with the specified status code.
 # ========================================================
 sub render_error {
     my ($c, $error, $status) = @_;
@@ -56,40 +52,25 @@ get '/' => sub {
 # ========================================================
 # Route: CSV File Upload
 # POST /upload
-# This route handles the uploading of a CSV file. The file is 
-# validated to ensure it's a CSV, and then its contents are 
-# processed to update the database. If any errors occur during 
-# file reading, database connection, or CSV processing, 
-# appropriate error messages are returned.
+# Handles the uploading and processing of a CSV file.
 # ========================================================
 post '/upload' => sub {
     my $c = shift;
     my $upload = $c->param('csvfile');
 
-    # Validate CSV file input
+    # Validate and process CSV file input
     my ($valid, $error) = validate_csv_file($upload);
-    unless ($valid) {
-        return render_error($c, $error, 400);
-    }
+    return render_error($c, $error, 400) unless $valid;
 
     my $csv_content = eval { $upload->slurp };
-    if ($@) {
-        return render_error($c, "Failed to read the uploaded file: $@", 500);
-    }
+    return render_error($c, "Failed to read the uploaded file: $@", 500) if $@;
 
-    # Establish a database connection
     my $dbh = eval { establish_db_connection() };
-    if ($@) {
-        return render_error($c, $@, 500);
-    }
+    return render_error($c, $@, 500) if $@;
 
-    # Execute the use case to process the CSV content
     my $use_case = Application::UploadCSVUseCase->new($dbh);
     my $message = eval { $use_case->execute(\$csv_content) };
-
-    if ($@) {
-        return render_error($c, "Failed to process CSV: $@", 500);
-    }
+    return render_error($c, "Failed to process CSV: $@", 500) if $@;
 
     return $c->render(json => { message => $message });
 };
@@ -97,30 +78,19 @@ post '/upload' => sub {
 # ========================================================
 # Route: List Orders
 # GET /api/list_orders
-# This route retrieves and returns a list of all orders stored 
-# in the database. It connects to the database, fetches the 
-# orders using the OrderRepository, and returns them as JSON.
-# If an error occurs during the database connection or data 
-# retrieval, appropriate error messages are returned.
+# Retrieves and returns all orders as JSON.
 # ========================================================
 get '/api/list_orders' => sub {
     my $c = shift;
 
-    # Establish a database connection
     my $dbh = eval { establish_db_connection() };
-    if ($@) {
-        return render_error($c, $@, 500);
-    }
+    return render_error($c, $@, 500) if $@;
 
-    # Retrieve all orders
     my $orders = eval {
         my $order_repository = Infrastructure::Persistence::SQLiteOrderRepository->new($dbh);
         return $order_repository->find_all();
     };
-
-    if ($@) {
-        return render_error($c, "Failed to retrieve orders: $@", 500);
-    }
+    return render_error($c, "Failed to retrieve orders: $@", 500) if $@;
 
     return $c->render(json => $orders);
 };
@@ -128,11 +98,7 @@ get '/api/list_orders' => sub {
 # ========================================================
 # Route: Generate PDF
 # POST /api/generate_pdf
-# This route generates a PDF report based on selected orders. 
-# The order IDs are validated and then passed to the PDF 
-# generator. If successful, the PDF is returned as a downloadable 
-# file. Errors during validation, database connection, or PDF 
-# generation are handled and returned to the client.
+# Generates and returns a PDF report based on selected orders.
 # ========================================================
 post '/api/generate_pdf' => sub {
     my $c = shift;
@@ -140,27 +106,18 @@ post '/api/generate_pdf' => sub {
 
     # Validate order IDs input
     my ($valid, $error) = validate_order_ids($order_ids);
-    unless ($valid) {
-        return render_error($c, $error, 400);
-    }
+    return render_error($c, $error, 400) unless $valid;
 
-    # Establish a database connection
     my $dbh = eval { establish_db_connection() };
-    if ($@) {
-        return render_error($c, $@, 500);
-    }
+    return render_error($c, $@, 500) if $@;
 
-    # Generate the PDF report via the use case
     my $pdf_file = eval {
         my $use_case = Application::GeneratePDFUseCase->new($dbh);
         return $use_case->execute($order_ids);
     };
+    return render_error($c, "Failed to generate PDF: $@", 500) if $@ || !$pdf_file;
 
-    if ($@ || !$pdf_file) {
-        return render_error($c, "Failed to generate PDF: $@", 500);
-    }
-
-    # Set the response headers to indicate a file download
+    # Return PDF as a downloadable file
     $c->res->headers->content_disposition('attachment; filename="order_report.pdf"');
     $c->res->headers->content_type('application/pdf');
     return $c->reply->file($pdf_file);
@@ -169,9 +126,7 @@ post '/api/generate_pdf' => sub {
 # ========================================================
 # Route: Delete Orders
 # POST /api/delete_orders
-# This route deletes the selected orders from the database.
-# The order IDs are validated and then passed to the 
-# repository to delete the orders.
+# Deletes the selected orders from the database.
 # ========================================================
 post '/api/delete_orders' => sub {
     my $c = shift;
@@ -179,23 +134,14 @@ post '/api/delete_orders' => sub {
 
     # Validate order IDs input
     my ($valid, $error) = validate_order_ids($order_ids);
-    unless ($valid) {
-        return render_error($c, $error, 400);
-    }
+    return render_error($c, $error, 400) unless $valid;
 
-    # Establish a database connection
     my $dbh = eval { establish_db_connection() };
-    if ($@) {
-        return render_error($c, $@, 500);
-    }
+    return render_error($c, $@, 500) if $@;
 
-    # Delete the selected orders
     my $order_repository = Infrastructure::Persistence::SQLiteOrderRepository->new($dbh);
     my $deleted_count = eval { $order_repository->delete_orders($order_ids) };
-
-    if ($@) {
-        return render_error($c, "Failed to delete orders: $@", 500);
-    }
+    return render_error($c, "Failed to delete orders: $@", 500) if $@;
 
     return $c->render(json => { message => "$deleted_count orders deleted successfully." });
 };
