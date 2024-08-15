@@ -12,8 +12,8 @@ sub new {
 }
 
 sub execute {
-    my ($self, $order_id) = @_;
-    return Infrastructure::PDFGenerator::generate_pdf($self->{dbh}, $order_id);
+    my ($self, $order_ids) = @_;
+    return Infrastructure::PDFGenerator::generate_pdf($self->{dbh}, $order_ids);
 }
 
 1;

@@ -13,25 +13,24 @@ sub new {
 
 sub insert {
     my ($self, $item) = @_;
-    my $sth = $self->{dbh}->prepare("INSERT INTO items (item_name, manufacturer, price, order_id) VALUES (?, ?, ?, ?)");
-    $sth->execute($item->item_name, $item->manufacturer, $item->price, $item->order_id);
+    my $sth = $self->{dbh}->prepare("INSERT INTO items (item_name, manufacturer, price) VALUES (?, ?, ?)");
+    $sth->execute($item->item_name, $item->manufacturer, $item->price);
 }
 
 sub find_or_insert {
-    my ($self, $item_name, $manufacturer, $price, $order_id) = @_;
+    my ($self, $item_name, $manufacturer, $price) = @_;
 
-    my $sth = $self->{dbh}->prepare("SELECT item_id FROM items WHERE item_name = ? AND order_id = ?");
-    $sth->execute($item_name, $order_id);
+    my $sth = $self->{dbh}->prepare("SELECT item_id FROM items WHERE item_name = ? AND manufacturer = ? AND price = ?");
+    $sth->execute($item_name, $manufacturer, $price);
     my ($item_id) = $sth->fetchrow_array();
 
     unless ($item_id) {
-        $sth = $self->{dbh}->prepare("INSERT INTO items (item_name, manufacturer, price, order_id) VALUES (?, ?, ?, ?)");
-        $sth->execute($item_name, $manufacturer, $price, $order_id);
+        $sth = $self->{dbh}->prepare("INSERT INTO items (item_name, manufacturer, price) VALUES (?, ?, ?)");
+        $sth->execute($item_name, $manufacturer, $price);
         $item_id = $self->{dbh}->last_insert_id(undef, undef, "items", "item_id");
-        return $item_id;
     }
 
-    return undef;  # Item already exists, return undef
+    return $item_id;
 }
 
 1;

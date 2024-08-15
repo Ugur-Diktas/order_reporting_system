@@ -7,3 +7,6 @@ README.md: Clearly document that wkhtmltopdf is a required dependency and provid
 Environment Variable: Allow users to specify the wkhtmltopdf path via an environment variable, offering flexibility if they want to use their system-installed version.
 
 cpan Log::Log4perl
+
+cpanm Module::Build
+=> Build + run app.pl

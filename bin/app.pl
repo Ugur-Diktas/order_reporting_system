@@ -150,9 +150,10 @@ post '/api/generate_pdf' => sub {
         return render_error($c, $@, 500);
     }
 
-    # Generate the PDF report
+    # Generate the PDF report via the use case
     my $pdf_file = eval {
-        Infrastructure::PDFGenerator::generate_pdf($dbh, $order_ids);
+        my $use_case = Application::GeneratePDFUseCase->new($dbh);
+        return $use_case->execute($order_ids);
     };
 
     if ($@ || !$pdf_file) {

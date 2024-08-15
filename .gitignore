@@ -1,7 +1,10 @@
 # Ignore build files
-_build/
+/_build/
 MYMETA.*
 Build
 
 # Ignore logs
-logs/
+/logs/
+
+# Ignore generated PDF files
+/generated_pdfs/

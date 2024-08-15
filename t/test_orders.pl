@@ -40,23 +40,23 @@ subtest 'Entity Creation' => sub {
     };
 
     subtest 'Item entity creation' => sub {
-        my $item = Domain::Entities::Item->new(1, 'Fountain Pen', 'Acme', 3.25, 1);
+        my $item = Domain::Entities::Item->new(1, 'Fountain Pen', 'Acme', 3.25);
         isa_ok($item, 'Domain::Entities::Item', 'Item object created');
         is($item->item_id, 1, 'Item ID is correct');
         is($item->item_name, 'Fountain Pen', 'Item name is correct');
         is($item->manufacturer, 'Acme', 'Manufacturer is correct');
         is($item->price, 3.25, 'Price is correct');
-        is($item->order_id, 1, 'Order ID is correct');
         done_testing();
     };
 
     subtest 'Order entity creation' => sub {
-        my $order = Domain::Entities::Order->new(1, 'ORD123', '2024-02-01', 1);
+        my $order = Domain::Entities::Order->new(1, 'ORD123', '2024-02-01', 1, 1);
         isa_ok($order, 'Domain::Entities::Order', 'Order object created');
         is($order->order_id, 1, 'Order ID is correct');
         is($order->order_number, 'ORD123', 'Order number is correct');
         is($order->order_date, '2024-02-01', 'Order date is correct');
         is($order->customer_id, 1, 'Customer ID is correct');
+        is($order->item_id, 1, 'Item ID is correct');
         done_testing();
     };
 };
@@ -92,7 +92,7 @@ subtest 'SQLite Repositories' => sub {
         my $item_repository = Infrastructure::Persistence::SQLiteItemRepository->new($dbh);
         $dbh->begin_work;
         eval {
-            my $item = Domain::Entities::Item->new(1, 'Fountain Pen', 'Acme', 3.25, 1);
+            my $item = Domain::Entities::Item->new(1, 'Fountain Pen', 'Acme', 3.25);
             $item_repository->insert($item);
             ok(1, 'Item inserted successfully');
             $dbh->rollback;
@@ -108,7 +108,7 @@ subtest 'SQLite Repositories' => sub {
         my $order_repository = Infrastructure::Persistence::SQLiteOrderRepository->new($dbh);
         $dbh->begin_work;
         eval {
-            my $order = Domain::Entities::Order->new(1, 'ORD123', '2024-02-01', 1);
+            my $order = Domain::Entities::Order->new(1, 'ORD123', '2024-02-01', 1, 1);
             my $order_id = $order_repository->insert($order);
             ok($order_id, 'Order inserted successfully');
             $dbh->rollback;
@@ -132,7 +132,7 @@ subtest 'Order deletion' => sub {
     $dbh->begin_work;
 
     eval {
-        my $order = Domain::Entities::Order->new(undef, 'ORD123', '2024-02-01', 1);
+        my $order = Domain::Entities::Order->new(undef, 'ORD123', '2024-02-01', 1, 1);
         my $order_id = $order_repository->insert($order);
         ok($order_id, 'Order inserted successfully');
 
@@ -158,7 +158,7 @@ subtest 'SQLiteItemRepository' => sub {
 
     $dbh->begin_work;
     eval {
-        my $item = Domain::Entities::Item->new(1, 'Fountain Pen', 'Acme', 3.25, 1);
+        my $item = Domain::Entities::Item->new(1, 'Fountain Pen', 'Acme', 3.25);
         $item_repository->insert($item);
 
         ok(1, 'Item inserted successfully');
@@ -178,7 +178,7 @@ subtest 'SQLiteOrderRepository' => sub {
 
     $dbh->begin_work;
     eval {
-        my $order = Domain::Entities::Order->new(1, 'ORD123', '2024-02-01', 1);
+        my $order = Domain::Entities::Order->new(1, 'ORD123', '2024-02-01', 1, 1);
         my $order_id = $order_repository->insert($order);
         ok($order_id, 'Order inserted successfully');
         $dbh->rollback;

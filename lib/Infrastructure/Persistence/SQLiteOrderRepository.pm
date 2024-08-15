@@ -24,7 +24,7 @@ sub find_all {
             i.price
         FROM orders o
         JOIN customers c ON o.customer_id = c.customer_id
-        JOIN items i ON o.order_id = i.order_id
+        JOIN items i ON o.item_id = i.item_id
     ");
     $sth->execute();
     
@@ -46,27 +46,26 @@ sub find_all {
 sub insert {
     my ($self, $order) = @_;
     
-    my $sth = $self->{dbh}->prepare("INSERT INTO orders (order_number, order_date, customer_id) VALUES (?, ?, ?)");
-    $sth->execute($order->order_number, $order->order_date, $order->customer_id);
+    my $sth = $self->{dbh}->prepare("INSERT INTO orders (order_number, order_date, customer_id, item_id) VALUES (?, ?, ?, ?)");
+    $sth->execute($order->order_number, $order->order_date, $order->customer_id, $order->item_id);
     
-    return $self->{dbh}->last_insert_id(undef, undef, undef, undef);
+    return $self->{dbh}->last_insert_id(undef, undef, "orders", "order_id");
 }
 
 sub find_or_insert {
-    my ($self, $order_number, $order_date, $customer_id) = @_;
+    my ($self, $order_number, $order_date, $customer_id, $item_id) = @_;
 
-    my $sth = $self->{dbh}->prepare("SELECT order_id FROM orders WHERE order_number = ? AND customer_id = ?");
-    $sth->execute($order_number, $customer_id);
+    my $sth = $self->{dbh}->prepare("SELECT order_id FROM orders WHERE order_number = ? AND customer_id = ? AND item_id = ?");
+    $sth->execute($order_number, $customer_id, $item_id);
     my ($order_id) = $sth->fetchrow_array();
 
     unless ($order_id) {
-        $sth = $self->{dbh}->prepare("INSERT INTO orders (order_number, order_date, customer_id) VALUES (?, ?, ?)");
-        $sth->execute($order_number, $order_date, $customer_id);
+        $sth = $self->{dbh}->prepare("INSERT INTO orders (order_number, order_date, customer_id, item_id) VALUES (?, ?, ?, ?)");
+        $sth->execute($order_number, $order_date, $customer_id, $item_id);
         $order_id = $self->{dbh}->last_insert_id(undef, undef, "orders", "order_id");
-        return $order_id;
     }
 
-    return undef;  # Order already exists, return undef
+    return $order_id;
 }
 
 sub delete_orders {

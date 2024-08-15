@@ -3,23 +3,12 @@ package Infrastructure::PDFGenerator;
 use strict;
 use warnings;
 use PDF::API2;
+use File::Path qw(make_path);
+use File::Spec;
+use File::Basename;
 
 # ========================================================
 # Function: generate_pdf
-# This function generates a PDF report from the order data
-# provided. It converts the orders to a PDF format directly
-# using the PDF::API2 module.
-#
-# Params:
-#   - $dbh: The database handle used to execute SQL queries.
-#   - $order_ids: An array reference containing the IDs of 
-#                 the orders to include in the PDF report.
-#
-# Returns:
-#   - The filename of the generated PDF report.
-#
-# Die/Exception:
-#   - Dies with an error message if PDF generation fails.
 # ========================================================
 sub generate_pdf {
     my ($dbh, $order_ids) = @_;
@@ -41,7 +30,7 @@ sub generate_pdf {
                o.order_number, o.order_date
         FROM orders o
         JOIN customers c ON o.customer_id = c.customer_id
-        JOIN items i ON o.order_id = i.order_id
+        JOIN items i ON o.item_id = i.item_id
         WHERE o.order_id IN (" . join(",", ("?") x @$order_ids) . ")
         ORDER BY c.customer_id, o.order_date
     ");
@@ -77,7 +66,23 @@ sub generate_pdf {
         $y_position -= 20;
     }
 
-    my $pdf_filename = 'orders_report.pdf';
+    # Define the directory and ensure it exists
+    my $directory = 'generated_pdfs';
+    unless (-d $directory) {
+        make_path($directory) or die "Failed to create directory: $directory";
+    }
+
+    # Generate a unique filename
+    my $base_filename = 'orders_report';
+    my $ext = '.pdf';
+    my $pdf_filename = File::Spec->catfile($directory, $base_filename . $ext);
+    my $counter = 1;
+
+    while (-e $pdf_filename) {
+        $pdf_filename = File::Spec->catfile($directory, $base_filename . "_" . $counter++ . $ext);
+    }
+
+    # Save the PDF with a unique filename
     $pdf->saveas($pdf_filename);
 
     return $pdf_filename;
