@@ -26,6 +26,10 @@ BEGIN {
 sub get_dbh {
     my $dbh = eval { Infrastructure::Persistence::DBConnection::connect() };
     ok($dbh, 'Database connection established');
+    # Clean up the database before each test
+    $dbh->do("DELETE FROM customers");
+    $dbh->do("DELETE FROM orders");
+    $dbh->do("DELETE FROM items");
     return $dbh;
 }
 
@@ -73,13 +77,15 @@ subtest 'SQLite Repositories' => sub {
             my $customer = Domain::Entities::Customer->new(1, 'John', 'Doe');
             my $result = $customer_repository->insert($customer);
             is($result, 'inserted', 'Customer inserted successfully');
-
+            
+            # Insert the same customer again to test duplicate handling
             $result = $customer_repository->insert($customer);
             is($result, 'duplicate', 'Duplicate customer detected successfully');
-
+            
+            # Test for handling invalid customer insert
             my $invalid_customer = Domain::Entities::Customer->new(2, undef, 'Doe');
             throws_ok { $customer_repository->insert($invalid_customer) } qr/Failed to insert customer/, 'Attempting to insert customer with missing fields should fail';
-
+            
             $dbh->rollback;
         };
         if ($@) {
