@@ -1,0 +1,7 @@
+# Ignore build files
+_build/
+MYMETA.*
+Build
+
+# Ignore logs
+logs/

@@ -1,0 +1,26 @@
+bin/app.pl
+bin/run_migrations.pl
+Build.PL
+db/migrations/001_create_tables.sql
+db/orders.db
+db/seeds/orders.csv
+lib/Application/GeneratePDFUseCase.pm
+lib/Application/UploadCSVUseCase.pm
+lib/Application/Validation.pm
+lib/Domain/Entities/Customer.pm
+lib/Domain/Entities/Item.pm
+lib/Domain/Entities/Order.pm
+lib/Infrastructure/CSVProcessor.pm
+lib/Infrastructure/PDFGenerator.pm
+lib/Infrastructure/Persistence/DBConnection.pm
+lib/Infrastructure/Persistence/SQLiteCustomerRepository.pm
+lib/Infrastructure/Persistence/SQLiteItemRepository.pm
+lib/Infrastructure/Persistence/SQLiteOrderRepository.pm
+lib/OrderReportingSystem.pm
+logs/app.log
+MANIFEST			This list of files
+NOTES.md
+public/index.html
+README.md
+t/orders.csv
+t/test_orders.pl

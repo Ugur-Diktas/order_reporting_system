@@ -2,14 +2,13 @@ package Infrastructure::PDFGenerator;
 
 use strict;
 use warnings;
-use File::Temp qw(tempfile);
+use PDF::API2;
 
 # ========================================================
 # Function: generate_pdf
 # This function generates a PDF report from the order data
-# provided. It converts the orders to an HTML format, and
-# then uses the wkhtmltopdf tool to convert the HTML to a
-# PDF file.
+# provided. It converts the orders to a PDF format directly
+# using the PDF::API2 module.
 #
 # Params:
 #   - $dbh: The database handle used to execute SQL queries.
@@ -20,25 +19,21 @@ use File::Temp qw(tempfile);
 #   - The filename of the generated PDF report.
 #
 # Die/Exception:
-#   - Dies with an error message if the wkhtmltopdf command 
-#     fails to execute.
+#   - Dies with an error message if PDF generation fails.
 # ========================================================
 sub generate_pdf {
     my ($dbh, $order_ids) = @_;
 
-    my $wkhtmltopdf_path = 'bin/wkhtmltopdf/wkhtmltopdf.exe';
+    my $pdf = PDF::API2->new();
+    my $page = $pdf->page();
+    my $font = $pdf->corefont('Helvetica-Bold');
+    my $text = $page->text();
+    $text->font($font, 20);
+    $text->translate(200, 750);
+    $text->text('Orders Report');
 
-    my $html = "<html><head><style>
-                    body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
-                    h1 { text-align: center; color: #333; }
-                    h2 { margin: 15px 0; color: #444; }
-                    .customer { margin-bottom: 25px; }
-                    .order { background-color: #f9f9f9; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
-                    .order p { margin: 5px 0; }
-                    .item { margin-left: 20px; }
-                    .item strong { color: #007BFF; }
-                </style><title>Orders Report</title></head><body>";
-    $html .= "<h1>Orders Report</h1>";
+    $page->mediabox('Letter');
+    my $y_position = 720;
 
     my $sth = $dbh->prepare("
         SELECT c.customer_id, c.first_name, c.last_name, 
@@ -53,31 +48,37 @@ sub generate_pdf {
     $sth->execute(@$order_ids);
 
     my $current_customer_id = undef;
+    my $font_regular = $pdf->corefont('Helvetica');
+    my $font_bold = $pdf->corefont('Helvetica-Bold');
 
     while (my $row = $sth->fetchrow_hashref) {
-        if (!defined $current_customer_id || $current_customer_id != $row->{customer_id}) {
-            $current_customer_id = $row->{customer_id};
-            $html .= "<div class='customer'><h2>$row->{first_name} $row->{last_name} (Customer ID: $row->{customer_id})</h2>";
+        if ($y_position < 100) {
+            $page = $pdf->page();
+            $text = $page->text();
+            $text->font($font, 12);
+            $y_position = 750;
         }
 
-        $html .= "<div class='order'>";
-        $html .= "<p><strong>Order $row->{order_number}</strong> - $row->{order_date}</p>";
-        $html .= "<div class='item'><p><strong>$row->{item_name}</strong> ($row->{manufacturer}) - \$" . sprintf('%.2f', $row->{price}) . "</p></div>";
-        $html .= "</div>"; 
+        if (!defined $current_customer_id || $current_customer_id != $row->{customer_id}) {
+            $current_customer_id = $row->{customer_id};
+            $text->font($font_bold, 14);
+            $text->translate(50, $y_position);
+            $text->text("$row->{first_name} $row->{last_name} (Customer ID: $row->{customer_id})");
+            $y_position -= 20;
+        }
+
+        $text->font($font_regular, 12);
+        $text->translate(70, $y_position);
+        $text->text("Order $row->{order_number} - $row->{order_date}");
+        $y_position -= 20;
+
+        $text->translate(90, $y_position);
+        $text->text("$row->{item_name} ($row->{manufacturer}) - \$" . sprintf('%.2f', $row->{price}));
+        $y_position -= 20;
     }
 
-    $html .= "</div>";
-    $html .= "</body></html>";
-
-    my ($html_fh, $html_filename) = tempfile(SUFFIX => '.html');
-    print $html_fh $html;
-    close $html_fh;
-
-    my ($pdf_fh, $pdf_filename) = tempfile(SUFFIX => '.pdf');
-    close $pdf_fh;
-
-    my $command = "\"$wkhtmltopdf_path\" $html_filename $pdf_filename";
-    system($command) == 0 or die "Failed to execute wkhtmltopdf: $!";
+    my $pdf_filename = 'orders_report.pdf';
+    $pdf->saveas($pdf_filename);
 
     return $pdf_filename;
 }
