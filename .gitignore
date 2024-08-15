@@ -3,8 +3,5 @@
 MYMETA.*
 Build
 
-# Ignore logs
-/logs/
-
 # Ignore generated PDF files
 /generated_pdfs/
