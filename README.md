@@ -12,7 +12,9 @@ This project is an Order Reporting System that processes CSV files containing or
 
 If you don't have `cpanm` installed, you can install it using the following command:
 
+```sh
 curl -L https://cpanmin.us | perl - App::cpanminus
+```
 
 ## Installation
 
@@ -45,6 +47,10 @@ Select orders in the list and click "Delete Orders" to remove them from the data
 
 To run the test suite, use the following command:
 prove -l
+
+!! Beware !!
+
+Testing the code will reset the database.
 
 This will run all tests in the `t/` directory and provide a summary of the results.
 
