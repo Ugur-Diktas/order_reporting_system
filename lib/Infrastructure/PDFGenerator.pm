@@ -15,13 +15,28 @@ sub generate_pdf {
 
     my $pdf = PDF::API2->new();
     my $page = $pdf->page();
-    my $font = $pdf->corefont('Helvetica-Bold');
+    $page->mediabox('Letter');
+
+    # Fonts and styles
+    my $font_title = $pdf->corefont('Helvetica-Bold');
+    my $font_header = $pdf->corefont('Helvetica');
+    my $font_bold = $pdf->corefont('Helvetica-Bold');
+    my $font_regular = $pdf->corefont('Helvetica');
+    my $font_italic = $pdf->corefont('Helvetica-Oblique');
+
+    # Header
     my $text = $page->text();
-    $text->font($font, 20);
+    $text->font($font_title, 24);
     $text->translate(200, 750);
     $text->text('Orders Report');
 
-    $page->mediabox('Letter');
+    # Footer
+    my $footer = $page->text();
+    $footer->font($font_regular, 10);
+    $footer->translate(300, 20);
+    $footer->text('Page 1');
+
+    # Order details start below the header
     my $y_position = 720;
 
     my $sth = $dbh->prepare("
@@ -37,33 +52,48 @@ sub generate_pdf {
     $sth->execute(@$order_ids);
 
     my $current_customer_id = undef;
-    my $font_regular = $pdf->corefont('Helvetica');
-    my $font_bold = $pdf->corefont('Helvetica-Bold');
 
     while (my $row = $sth->fetchrow_hashref) {
+        # Add a new page if the content overflows
         if ($y_position < 100) {
             $page = $pdf->page();
             $text = $page->text();
-            $text->font($font, 12);
+            $text->font($font_regular, 12);
             $y_position = 750;
+
+            # Add footer to each page
+            $footer = $page->text();
+            $footer->font($font_regular, 10);
+            $footer->translate(300, 20);
+            $footer->text('Page ' . $pdf->pages);
         }
 
+        # Print customer name and ID
         if (!defined $current_customer_id || $current_customer_id != $row->{customer_id}) {
             $current_customer_id = $row->{customer_id};
-            $text->font($font_bold, 14);
+            $text->font($font_bold, 16);
             $text->translate(50, $y_position);
             $text->text("$row->{first_name} $row->{last_name} (Customer ID: $row->{customer_id})");
-            $y_position -= 20;
+            $y_position -= 30;
         }
 
+        # Print order number
         $text->font($font_regular, 12);
         $text->translate(70, $y_position);
-        $text->text("Order $row->{order_number} - $row->{order_date}");
-        $y_position -= 20;
+        $text->text("Order #$row->{order_number}");
+        $y_position -= 25;
 
+        # Print order date
         $text->translate(90, $y_position);
-        $text->text("$row->{item_name} ($row->{manufacturer}) - \$" . sprintf('%.2f', $row->{price}));
-        $y_position -= 20;
+        $text->text("$row->{order_date}");
+        $y_position -= 15;
+
+        # Print item details
+        $text->font($font_italic, 12);
+        $text->translate(90, $y_position);
+        my $price = $row->{price};
+        $text->text("$row->{item_name} ($row->{manufacturer}) - $price");
+        $y_position -= 30;
     }
 
     # Define the directory and ensure it exists

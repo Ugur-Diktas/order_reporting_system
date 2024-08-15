@@ -72,12 +72,7 @@ sub process_csv {
 
     close $fh;
 
-    # Prepare a summary message of the results
     my $message = "CSV data has been successfully imported!\n";
-    $message .= scalar(@inserted_customers) . " customers were added.\n";
-    $message .= scalar(@duplicate_customers) . " duplicate customers were skipped.\n";
-    $message .= "$orders_added orders were added.\n";
-    $message .= "$items_added items were added.";  # This count may be removed or adjusted as needed
 
     return $message;
 }
